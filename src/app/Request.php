@@ -226,15 +226,20 @@ class Request{
                 echo $error->getMessage();
             }
         }else{
-            throw new Exception("Please provide an url");
+            echo("Please provide an url");
         }
     }
     /**
      * @method get get Request
      */
-    public function get(){
+    public function get($id=NULL){
         try{
+            if($id!=NULL){
+                $baseUrl=$this->url;
+                $this->buildNewUrl($id);
+            }
             $command=$this->createCommand('get');
+            $this->url=$baseUrl;
             return self::send($command);
         }catch(Exception $error){
             echo $error->getMessage();
@@ -254,7 +259,6 @@ class Request{
             echo $error->getMessage();
         }
     }
-
 
     public function buildNewUrl($id){
         $baseUrl=$this->url;
