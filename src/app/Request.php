@@ -157,7 +157,7 @@ class Request{
     }
 
     /**
-     * @method createCommand a String of options to be concatinate withe the curl request.
+     * @method createCommand 
      * build the curl command based on the options,headers,methods based on the user request. 
      * @param method = http request method,
      * @param postData = array of post/put dataArray to string conversion
