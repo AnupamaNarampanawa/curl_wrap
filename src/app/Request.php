@@ -24,6 +24,8 @@ class Request{
     private $is_basic_auth=false;//is basic auth is enabled.
     private $is_token_auth=false;//is token auth is enabled.
 
+    private $customize_a_parser;
+    private $is_set_custom_parser=false;
 
     /**
      * @method getCurlTemplate
@@ -112,7 +114,7 @@ class Request{
             if(!empty($this->headers)){
                 $passHeader="";
                 foreach($this->headers as $value){
-                    $passHeader="$passHeader -H  \"$value\"";
+                    $passHeader="$passHeader --header  \"$value\"";
                 }
             }
         return $passHeader;
@@ -168,10 +170,10 @@ class Request{
             try{
                 $format='';
                 if($this->is_requesting_json){
-                    $format="-H \"Accept: application/json\"";
+                    $format="--header \"Accept: application/json\"";
                     $this->is_requesting_xml=false;
                 }elseif($this->is_requesting_xml){
-                    $format="-H \"Accept: application/xml\"";
+                    $format="--header \"Accept: application/xml\"";
                     $this->is_requesting_json=false;
                 }
 
@@ -202,10 +204,19 @@ class Request{
                 $token='';
                 if($this->is_token_auth){
                     $getToken=$this->token;
-                    $token="-H \"Authorization: Bearer {{$getToken}}";
+                    $token="--header \"Authorization: Bearer {{$getToken}}";
+                }
+
+                $setCustomParser='';
+                if($this->is_set_custom_parser){
+                    $setCustomParser=$this->customize_a_parser;
+                }
+
+                if($method=='GET'){
+                    $method='';
                 }
                 
-                $curl_template="curl $options $method $headers $format $pass_credentials $token $postData $url";
+                $curl_template="curl $options $method $headers $setCustomParser $format $pass_credentials $token $postData $url";
                 $curl_template=preg_replace('/\s+/', ' ',$curl_template);
                 
                 $this->curl_template=$curl_template;
@@ -244,6 +255,13 @@ class Request{
         }
     }
 
+
+    public function buildNewUrl($id){
+        $baseUrl=$this->url;
+        $buildURL="$baseUrl/"."$id";
+        $this->url=$buildURL;
+    }
+
     /**
      * @method put put Request
      * @param data = array of put data
@@ -251,12 +269,11 @@ class Request{
      */
     public function put($data=array(),$id){
         try{
+            $baseUrl=$this->url;
+            $this->buildNewUrl($id);
             $putData=$this->buildData($data);
-            $query_url=$this->buildUrl($this->url,["id"=>"$id"]);
-            $this->url=$query_url;
-            $temp_url=$this->url;
             $command=$this->createCommand('put',$putData);
-            $this->url=$temp_url;
+            $this->url=$baseUrl;
             return self::send($command);
         }catch(Exception $error){
             echo $error->getMessage();
@@ -269,11 +286,10 @@ class Request{
      */
     public function delete($id){
         try{
-            $query_url=$this->buildUrl($this->url,["id"=>"$id"]);
-            $temp_url=$this->url;
-            $this->url=$query_url;
+            $baseUrl=$this->url;
+            $this->buildNewUrl($id);
             $command=$this->createCommand('delete');
-            $this->url=$temp_url;
+            $this->url=$baseUrl;
             return self::send($command);
         }catch(Exception $error){
             echo $error->getMessage();
@@ -302,7 +318,7 @@ class Request{
             }
             $passData=str_replace(' ', '', $passData);
             $passData=substr_replace($passData,'',-1);
-            $passData="-d \"{{$passData}}\"";
+            $passData="--data \"{{$passData}}\"";
             return $passData;
         }catch(Exception $error){
             echo $error->getMessage();
@@ -318,7 +334,6 @@ class Request{
      */
     public static function buildUrl($url, array $query)
 	{
-
 		if (empty($query)) {
 			return $url;
 		}
@@ -345,12 +360,28 @@ class Request{
 
     public function json(){
         $this->is_requesting_json=true;
+        return $this;
     }
 
     public function xml(){
         $this->is_requesting_xml=true;
+        return $this;
     }
 
+    public function custom($variableName,$data=array()){
+        $buildCustomParser='';
+        $this->is_set_custom_parser=true;
+        if($variableName!=NULL && !empty($data)){
+            foreach($data as $value){
+                $buildCustomParser="$buildCustomParser $value";
+            }
+        }
+        $buildCustomParser=str_replace(' ', '', $buildCustomParser);
+        $buildCustomParser=substr_replace($buildCustomParser,'',-1);
+        $buildCustomParser="$variableName \"{{$buildCustomParser}}\"";
+        $this->customize_a_parser=$buildCustomParser;
+        return $this;
+    }
     /**
      * @method send
      * This method will execute the curl command
